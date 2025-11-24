@@ -38,7 +38,6 @@ def get_args():
 
 args = get_args()
 
-
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 print("-- Reading dataset")
@@ -66,6 +65,13 @@ elif args.dataset == "traffic":
     numerical_features = ["expense", "amount", "paymentAmount"]
     max_prefix_length = 10
 
+train_dataset = NeSyDataset(X_train, y_train)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
+val_dataset = NeSyDataset(X_val, y_val)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+test_dataset = NeSyDataset(X_test, y_test)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
+
 config = ModelConfig(
     hidden_size=args.hidden_size,
     num_layers=args.num_layers,
@@ -75,13 +81,6 @@ config = ModelConfig(
     dataset = args.dataset
 )
 
-train_dataset = NeSyDataset(X_train, y_train)
-train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataset = NeSyDataset(X_val, y_val)
-val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
-test_dataset = NeSyDataset(X_test, y_test)
-test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
-
 if args.model == "lstm":
     lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
 else:
@@ -89,26 +88,6 @@ else:
 
 optimizer = torch.optim.Adam(lstm.parameters(), lr=config.learning_rate)
 criterion = torch.nn.BCELoss()
-
-if args.dataset == "sepsis":
-    rule_1 = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
-    rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
-    rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
-    rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-elif args.dataset == "bpi12":
-    f1 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[10000]])[0][0]).any(dim=1)
-    f2 = lambda x: (x[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1)
-    f3 = lambda x: (x[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1)
-    f_resources_11169 = lambda x: (x[:, :240] == 48).any(dim=1)
-    f_resources_10910 = lambda x: (x[:, :240] == 21).any(dim=1)
-elif args.dataset == "bpi17":
-    rule_1 = lambda x: ((x[:, 140] < scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, :20] == 11).any(dim=1) & (x[:, 40:60] != 0).any(dim=1))
-    rule_2 = lambda x: (x[:, 40:60] == 0).all(dim=1) & (x[:, :20] == 11).any(dim=1)
-    rule_3 = lambda x: (x[:, 140] > scalers["case:RequestedAmount"].transform([[20000]])[0][0]) & (x[:, 20:40] == 6).any(dim=1)
-elif args.dataset == "traffic":
-    rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
-    rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
-    rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
 
 lstm.train()
 training_losses = []
@@ -118,29 +97,6 @@ for epoch in range(config.num_epochs):
     for enum, (x, y) in enumerate(train_loader):
         x = x.to(device)
         y = y.to(device)
-        if args.dataset == "sepsis":
-            rule_1_res = rule_1(x).detach()
-            rule_2_res = rule_2(x).detach()
-            rule_3_res = torch.logical_and(rule_crp_atb(x).detach(), rule_crp_100(x).detach())
-        elif args.dataset == "bpi12":
-            rule_1_res = f1(x).detach()
-            f2_res = f2(x).detach()
-            f3_res = f3(x).detach()
-            f_resources_11169_res = f_resources_11169(x).detach()
-            f_resources_10910_res = f_resources_10910(x).detach()
-            rule_2_res = torch.logical_and(f2_res, f3_res).detach()
-            rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
-        elif args.dataset == "bpi17":
-            rule_1_res = rule_1(x).detach()
-            rule_2_res = rule_2(x).detach()
-            rule_3_res = rule_3(x).detach()
-        elif args.dataset == "traffic":
-            rule_1_res = rule_penalty(x).detach()
-            rule_2_res = rule_payment(x).detach()
-            rule_3_res = rule_amount(x).detach()
-        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
         optimizer.zero_grad()
         output = lstm(x)
         loss = criterion(output.squeeze(1), y)
@@ -155,29 +111,6 @@ for epoch in range(config.num_epochs):
         with torch.no_grad():
             x = x.to(device)
             y = y.to(device)
-            if args.dataset == "sepsis":
-                rule_1_res = rule_1(x).detach()
-                rule_2_res = rule_2(x).detach()
-                rule_3_res = torch.logical_and(rule_crp_atb(x).detach(), rule_crp_100(x).detach())
-            elif args.dataset == "bpi12":
-                rule_1_res = f1(x).detach()
-                f2_res = f2(x).detach()
-                f3_res = f3(x).detach()
-                f_resources_11169_res = f_resources_11169(x).detach()
-                f_resources_10910_res = f_resources_10910(x).detach()
-                rule_2_res = torch.logical_and(f2_res, f3_res).detach()
-                rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
-            elif args.dataset == "bpi17":
-                rule_1_res = rule_1(x).detach()
-                rule_2_res = rule_2(x).detach()
-                rule_3_res = rule_3(x).detach()
-            elif args.dataset == "traffic":
-                rule_1_res = rule_penalty(x).detach()
-                rule_2_res = rule_payment(x).detach()
-                rule_3_res = rule_amount(x).detach()
-            x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-            x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-            x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
             output = lstm(x)
             loss = criterion(output.squeeze(1), y)
             val_losses.append(loss.item())
@@ -199,29 +132,6 @@ count_violated = 0
 for enum, (x, y) in enumerate(test_loader):
     with torch.no_grad():
         x = x.to(device)
-        if args.dataset == "sepsis":
-            rule_1_res = rule_1(x).detach()
-            rule_2_res = rule_2(x).detach()
-            rule_3_res = torch.logical_and(rule_crp_atb(x).detach(), rule_crp_100(x).detach())
-        elif args.dataset == "bpi12":
-            rule_1_res = f1(x).detach()
-            f2_res = f2(x).detach()
-            f3_res = f3(x).detach()
-            f_resources_11169_res = f_resources_11169(x).detach()
-            f_resources_10910_res = f_resources_10910(x).detach()
-            rule_2_res = torch.logical_and(f2_res, f3_res).detach()
-            rule_3_res = torch.logical_and(f_resources_11169_res, f_resources_10910_res).detach()
-        elif args.dataset == "bpi17":
-            rule_1_res = rule_1(x).detach()
-            rule_2_res = rule_2(x).detach()
-            rule_3_res = rule_3(x).detach()
-        elif args.dataset == "traffic":
-            rule_1_res = rule_penalty(x).detach()
-            rule_2_res = rule_payment(x).detach()
-            rule_3_res = rule_amount(x).detach()
-        x = torch.cat([x, rule_1_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-        x = torch.cat([x, rule_2_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
-        x = torch.cat([x, rule_3_res.unsqueeze(1).repeat(1, max_prefix_length)], dim=1)
         outputs = lstm(x).detach().cpu().numpy()
         predictions = np.where(outputs > 0.5, 1., 0.).flatten()
         for i in range(len(y)):
