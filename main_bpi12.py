@@ -91,8 +91,10 @@ val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 test_dataset = NeSyDataset(X_test, y_test)
 test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-# lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
 optimizer = torch.optim.Adam(lstm.parameters(), lr=config.learning_rate)
 criterion = torch.nn.BCELoss()
 
@@ -188,8 +190,10 @@ print("Recall:", recall)
 print("Compliance:", compliance_lstm / num_constraints)
 metrics_lstm.append(compliance_lstm / num_constraints)
 
-# lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 # Knowledge Theory
@@ -271,8 +275,10 @@ metrics_ltn.append(compliance)
 
 # LTN_B
 
-# lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 # Knowledge Theory
@@ -321,10 +327,6 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ((x.value[:, 200:240] > scalers["case:AMOUNT_REQ"].transform([[50000]])[0][0]).any(dim=1) & (x.value[:, 200:240] < scalers["case:AMOUNT_REQ"].transform([[60000]])[0][0]).any(dim=1))),
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 48).any(dim=1)),
             Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :240] == 21).any(dim=1)),
-            # Forall(x_All, Implies(IsAmountReqLessThan10k(x_All), Not(P(x_All)))),
-            # Forall(x_All, Implies(And(IsAmountReqGreaterThan50k(x_All), IsAmountLessThan60k(x_All)), Not(P(x_All)))),
-            # Forall(x_All, Implies(Res11169ExecutedActivity(x_All), Not(P(x_All)))),
-            # Forall(x_All, Implies(Res10910ExecutedActivity(x_All), Not(P(x_All)))),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -359,8 +361,10 @@ metrics_ltn_B.append(compliance)
 
 # LTN_A
 
-# lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -428,8 +432,10 @@ metrics_ltn_A.append(compliance)
 
 # LTN_AB
 
-# lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -499,8 +505,10 @@ metrics_ltn_AB.append(compliance)
 
 # LTN_BC
 
-# lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 HasAct = ltn.Predicate(func = lambda x, act: torch.tensor(x[:, 104:117] == act[0].item()).any(dim=1))
 IsNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i < j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
 IsImmediateNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i + 1 == j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
@@ -568,8 +576,10 @@ metrics_ltn_BC.append(compliance)
 
 # LTN_AC
 
-# lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -577,7 +587,6 @@ params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
-# for epoch in range(1):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -640,8 +649,10 @@ metrics_ltn_AC.append(compliance)
 
 # LTN_ABC
 
-# lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()

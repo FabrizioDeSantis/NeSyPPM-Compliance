@@ -93,7 +93,10 @@ rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0
 
 numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']
 
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
 optimizer = torch.optim.Adam(lstm.parameters(), lr=config.learning_rate)
 criterion = torch.nn.BCELoss()
 
@@ -183,7 +186,10 @@ plt.title("Confusion Matrix")
 plt.savefig("confusion_matrix_lstm.png", dpi=300, bbox_inches='tight')
 plt.close()
 
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
 P = ltn.Predicate(lstm).to(device)
 
 # Knowledge Theory
@@ -281,8 +287,10 @@ CheckPresenceCRPAtb = ltn.Predicate(func= lambda x: torch.tensor([int(any(i < j 
 CheckCRP100 = ltn.Predicate(func = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1))
 
 # LTN_B
-
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
 P = ltn.Predicate(lstm).to(device)
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
@@ -347,7 +355,10 @@ high_lactic_acid = lambda x: (x[:, 351:364] > scalers["LacticAcid"].transform([[
 check_sirs_criteria = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
 rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x])
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
 P = ltn.Predicate(lstm).to(device)
 max_f1_val = 0.0
 SatAgg = ltn.fuzzy_ops.SatAgg()
@@ -417,8 +428,10 @@ metrics_ltn_A.append(compliance)
 
 # LTN_AB
 
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=128, num_classes=1, max_len=max_prefix_length).to(device)
-P = ltn.Predicate(lstm).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
@@ -490,8 +503,10 @@ metrics_ltn_AB.append(compliance)
 
 # LTN_BC
 max_f1_val = 0.0
-lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
-ERSepsisTriage = ltn.Constant(torch.tensor(5))
+if args.backbone == "lstm":
+    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)ERSepsisTriage = ltn.Constant(torch.tensor(5))
 ERTriage = ltn.Constant(torch.tensor(4))
 Antibiotics = ltn.Constant(torch.tensor(6))
 Liquid = ltn.Constant(torch.tensor(7))
@@ -504,7 +519,6 @@ params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
-# for epoch in range(1):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -570,8 +584,10 @@ metrics_ltn_BC.append(compliance)
 
 # LTN_AC
 
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
-P = ltn.Predicate(lstm).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
@@ -650,7 +666,10 @@ metrics_ltn_AC.append(compliance)
 
 # LTN_ABC
 
-lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=64, num_classes=1, max_len=max_prefix_length).to(device)
+if args.backbone == "lstm":
+    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
+else:
+    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length).to(device)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
