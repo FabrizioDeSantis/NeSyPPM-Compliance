@@ -64,7 +64,7 @@ config = ModelConfig(
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-numerical_features = ["expense", "amount", "paymentAmount"]
+numerical_features = ["expense", "amount", "paymentAmount", "elapsed_time", "time_since_previous"]
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(filename='output.log', level=logging.INFO)

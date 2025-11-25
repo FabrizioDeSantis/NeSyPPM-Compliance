@@ -147,6 +147,8 @@ def preprocess_eventlog(data, seed):
     scaler_paymentamount = MinMaxScaler()
     scaler_totalpaymentamount = MinMaxScaler()
     scaler_expense = MinMaxScaler()
+    scaler_elapsed = MinMaxScaler()
+    scaler_time_prev = MinMaxScaler()
 
     print(data.columns)
 
@@ -218,6 +220,14 @@ def preprocess_eventlog(data, seed):
     data["expense"] = data["expense"].fillna(0)
     data["expense"] = scaler_expense.fit_transform(data[["expense"]])
     scalers["expense"] = scaler_expense
+
+    data["elapsed_time"] = data["elapsed_time"].fillna(0)
+    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
+    scalers["elapsed_time"] = scaler_elapsed
+
+    data["time_since_previous"] = data["time_since_previous"].fillna(0)
+    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
+    scalers["time_since_previous"] = scaler_time_prev
 
     data["article"] = data["article"].ffill()
     data["article"] = pd.Categorical(data["article"])

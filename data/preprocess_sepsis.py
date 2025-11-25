@@ -3,8 +3,8 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import random
 
-def create_test_set(data, seed, ratio=0.2):
-    random.seed(seed)
+def create_test_set(data, ratio=0.2):
+    random.seed(11)
     grouped = data.groupby("case:concept:name")
     unique_groups = list(grouped.groups.keys())  # Get the unique group IDs
     labels = data.groupby("case:concept:name")["label"].first().to_list()
@@ -127,7 +127,20 @@ def create_ngrams(data, train_ids, val_ids, test_ids, window_size=13):
 
     return ngrams_training, labels_training, ngrams_val, labels_val, ngrams_test, labels_test, feature_names
 
-def preprocess_eventlog(data, seed):
+def create_train_val_test_split(data, train_ratio=0.8, val_ratio=0.1, test_ratio=0.2):
+    data = data.sort_values(by=['case:concept:name', 'time:timestamp'])
+    graph_ids = data['case:concept:name'].unique()
+    num_graphs = len(graph_ids)
+    test_size = int(num_graphs * test_ratio)
+    val_size = int((num_graphs - test_size) * val_ratio)
+    train_size = num_graphs - test_size - val_size
+    print(f"Total graphs: {num_graphs}, Train: {train_size}, Val: {val_size}, Test: {test_size}")
+    train_ids = graph_ids[:train_size]
+    val_ids = graph_ids[train_size:train_size + val_size]
+    test_ids = graph_ids[train_size + val_size:]
+    return train_ids, test_ids
+
+def preprocess_eventlog(data, dataset_size=None):
 
     vocab_sizes = {}
     admissions = data[data["concept:name"] == "ER Registration"]
@@ -136,18 +149,19 @@ def preprocess_eventlog(data, seed):
     print(len(admission_ids))
     print("Number of patients: ", len(labels))
 
-    train_ids, test_ids = create_test_set(data, seed)
+    train_ids, test_ids = create_test_set(data)
     data_train = data[data["case:concept:name"].isin(train_ids)]
-    train_ids, val_ids = create_test_set(data_train, seed, ratio=0.2)
+    train_ids, val_ids = create_test_set(data_train)
 
     print("Number of patients in train set: ", len(train_ids))
-    print("Number of patients in val set: ", len(val_ids))
     print("Number of patients in test set: ", len(test_ids))
 
     scaler_la = MinMaxScaler()
     scaler_le = MinMaxScaler()
     scaler_crp = MinMaxScaler()
     scaler_age = MinMaxScaler()
+    scaler_elapsed = MinMaxScaler()
+    scaler_time_prev = MinMaxScaler()
     
     labels = data.groupby("case:concept:name")["label"].first().reset_index()
     print(data.columns)
@@ -178,12 +192,18 @@ def preprocess_eventlog(data, seed):
     data["Leucocytes"] = scaler_le.fit_transform(data[["Leucocytes"]])
     data["Age"] = data["Age"].fillna(0)
     data["Age"] = scaler_age.fit_transform(data[["Age"]])
+    data["elapsed_time"] = data["elapsed_time"].fillna(0)
+    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
+    data["time_since_previous"] = data["time_since_previous"].fillna(0)
+    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
 
     scalers = {
         "LacticAcid": scaler_la,
         "CRP": scaler_crp,
         "Leucocytes": scaler_le,
-        "Age": scaler_age
+        "Age": scaler_age,
+        "elapsed_time": scaler_elapsed,
+        "time_since_previous": scaler_time_prev
     }
 
     print(data.columns)

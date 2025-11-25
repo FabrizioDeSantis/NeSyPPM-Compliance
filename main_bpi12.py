@@ -82,7 +82,7 @@ print(counts)
 
 print(feature_names)
 
-numerical_features = ["case:AMOUNT_REQ"]
+numerical_features = ["case:AMOUNT_REQ", "elapsed_time", "time_since_previous"]
 
 train_dataset = NeSyDataset(X_train, y_train)
 train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)

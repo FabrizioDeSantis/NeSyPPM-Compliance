@@ -205,6 +205,16 @@ def preprocess_eventlog(data, seed,dataset_size=None):
     data["OfferedAmount"] = scaler_oa.fit_transform(data[["OfferedAmount"]])
     scalers["OfferedAmount"] = scaler_oa
 
-    data = data[['case:concept:name', 'label', 'concept:name', 'case:LoanGoal', 'CreditScore', 'Action', 'org:resource', 'lifecycle:transition', 'case:ApplicationType', 'case:RequestedAmount', 'FirstWithdrawalAmount', 'NumberOfTerms', 'MonthlyCost', 'OfferedAmount', 'time:timestamp', 'rule_1', 'rule_2', 'rule_3']]
+    scaler_elapsed = MinMaxScaler()
+    data["elapsed_time"] = data["elapsed_time"].fillna(0)
+    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
+    scalers["elapsed_time"] = scaler_elapsed
+
+    scaler_time_prev = MinMaxScaler()
+    data["time_since_previous"] = data["time_since_previous"].fillna(0)
+    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
+    scalers["time_since_previous"] = scaler_time_prev
+
+    data = data[['case:concept:name', 'label', 'concept:name', 'case:LoanGoal', 'CreditScore', 'Action', 'org:resource', 'lifecycle:transition', 'case:ApplicationType', 'case:RequestedAmount', 'FirstWithdrawalAmount', 'NumberOfTerms', 'MonthlyCost', 'OfferedAmount', 'time:timestamp', 'elapsed_time', 'time_since_previous', 'rule_1', 'rule_2', 'rule_3']]
 
     return create_ngrams(data, train_ids, val_ids, test_ids), vocab_sizes, scalers

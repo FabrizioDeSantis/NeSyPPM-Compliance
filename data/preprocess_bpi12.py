@@ -133,6 +133,8 @@ def preprocess_eventlog(data, seed, dataset_size=None):
     print("Number of traces in test set: ", len(test_ids))
 
     scaler_ar = MinMaxScaler()
+    scaler_elapsed = MinMaxScaler()
+    scaler_time_prev = MinMaxScaler()
     
     labels = data.groupby("case:concept:name")["label"].first().reset_index()
     print(data.columns)
@@ -161,9 +163,15 @@ def preprocess_eventlog(data, seed, dataset_size=None):
     # Numerical values
     data["case:AMOUNT_REQ"] = data["case:AMOUNT_REQ"].ffill()
     data["case:AMOUNT_REQ"] = scaler_ar.fit_transform(data[["case:AMOUNT_REQ"]])
+    data["elapsed_time"] = data["elapsed_time"].fillna(0)
+    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
+    data["time_since_previous"] = data["time_since_previous"].fillna(0)
+    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
 
     scalers = {
-        "case:AMOUNT_REQ": scaler_ar
+        "case:AMOUNT_REQ": scaler_ar,
+        "elapsed_time": scaler_elapsed,
+        "time_since_previous": scaler_time_prev
     }
 
     return create_ngrams(data, train_ids, val_ids, test_ids), vocab_sizes, scalers

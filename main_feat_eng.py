@@ -54,16 +54,16 @@ counts = Counter(y_test)
 print(counts)
 
 if args.dataset == "sepsis":
-    numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid']
+    numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "elapsed_time", "time_since_previous"]
     max_prefix_length = 13
 elif args.dataset == "bpi12":
-    numerical_features = ["case:AMOUNT_REQ"]
+    numerical_features = ["case:AMOUNT_REQ", "elapsed_time", "time_since_previous"]
     max_prefix_length = 40
 elif args.dataset == "bpi17":
-    numerical_features = ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]
+    numerical_features = ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount", "elapsed_time", "time_since_previous"]
     max_prefix_length = 20
 elif args.dataset == "traffic":
-    numerical_features = ["expense", "amount", "paymentAmount"]
+    numerical_features = ["expense", "amount", "paymentAmount", "elapsed_time", "time_since_previous"]
     max_prefix_length = 10
 
 config = ModelConfig(

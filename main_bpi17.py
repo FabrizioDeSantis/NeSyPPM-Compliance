@@ -67,7 +67,7 @@ data = pd.read_csv("data_processed/"+dataset+".csv", dtype={"org:resource": str}
 
 (X_train, y_train, X_val, y_val, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_bpi17.preprocess_eventlog(data, args.seed)
 
-numerical_features = ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount"]
+numerical_features = ["CreditScore", "MonthlyCost", "OfferedAmount", "case:RequestedAmount", "FirstWithdrawalAmount", "elapsed_time", "time_since_previous"]
 
 print("--- Label distribution")
 print("--- Training set")
