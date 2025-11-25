@@ -16,6 +16,7 @@ This repository contains the code for the paper "Neuro-Symbolic Learning for Pre
 *   **`model/lstm.py`**: Contains the architecture used for the LSTM backbone.
 *   **`model/transformer.py`**: Contains the architecture used for the Transformer backbone.
 *   **`data/dataset.py`**: Dataset class.
+*   **`knowledge_base.py`**: Dataset class.
 
 ## Datasets
 
