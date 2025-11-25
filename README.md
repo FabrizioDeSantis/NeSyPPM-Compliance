@@ -8,6 +8,7 @@ This repository contains the code for the paper "Neuro-Symbolic Learning for Pre
 *   **`main_bpi17.py`**: Contains the code for the *BPIC2017* event log.
 *   **`main_sepsis.py`**: Contains the code for the *SEPSIS* event log.
 *   **`main_traffic.py`**: Contains the code for the *TRAFFIC FINES* dataset.
+*   **`main_feat_eng.py`**: Contains the code for the LSTM-FE and TFR-FE models.
 *   **`data/preprocess_bpi12.py`**: Contains the code for preprocessing the *BPIC2012* event log.
 *   **`data/preprocess_bpi17.py`**: Contains the code for preprocessing the *BPIC2017* event log.
 *   **`data/preprocess_sepsis.py`**: Contains the code for preprocessing the *Sepsis* event log.
