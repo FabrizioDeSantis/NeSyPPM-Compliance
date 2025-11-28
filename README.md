@@ -14,9 +14,11 @@ This repository contains the code for the paper "Neuro-Symbolic Learning for Pre
 *   **`data/preprocess_sepsis.py`**: Contains the code for preprocessing the *Sepsis* event log.
 *   **`data/preprocess_traffic.py`**: Contains the code for preprocessing the *TRAFFIC FINES* event log.
 *   **`model/lstm.py`**: Contains the architecture used for the LSTM backbone.
-*   **`model/transformer.py`**: Contains the architecture used for the Transformer backbone.
+*   **`model/transformer.py`**: Contains the architecture used
+*   **`knowledge_base.py`**: Dataset class. for the Transformer backbone.
 *   **`data/dataset.py`**: Dataset class.
 *   **`knowledge_base.py`**: Dataset class.
+*   **`create_temporal_features.py`**: Contains the code to create the temporal features also used for logical rules.
 
 ## Datasets
 
