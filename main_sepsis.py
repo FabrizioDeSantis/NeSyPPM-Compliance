@@ -91,6 +91,35 @@ rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1))
 rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
 
+def check_time_constraint(x):
+    batch_results = []
+    for i in range(x.value.shape[0]):
+        row = x.value[i]
+        # Find positions where activity 5 and 6 occur
+        act5_positions = (row[104:117] == 5).nonzero(as_tuple=True)[0]
+        act6_positions = (row[104:117] == 6).nonzero(as_tuple=True)[0]
+                
+        # Check if both activities exist
+        if len(act5_positions) > 0 and len(act6_positions) > 0:
+            # Get elapsed times for these positions
+            times_act5 = row[-13:][act5_positions]
+            times_act6 = row[-13:][act6_positions]
+                    
+            # Check if any pair has time difference <= 120
+            satisfies = False
+            for t5 in times_act5:
+                for t6 in times_act6:
+                    if abs(t5 - t6) <= scalers["elapsed_time"].transform([[120]])[0][0]:
+                        satisfies = True
+                        break
+                if satisfies:
+                    break
+            batch_results.append(satisfies)
+        else:
+            batch_results.append(False)
+            
+    return torch.tensor(batch_results, dtype=torch.bool, device=x.value.device)
+
 ERSepsisTriage = ltn.Constant(torch.tensor(5))
 ERTriage = ltn.Constant(torch.tensor(4))
 Antibiotics = ltn.Constant(torch.tensor(6))
@@ -325,8 +354,8 @@ for epoch in range(args.num_epochs_nesy):
             # SEPSIS KG
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
-            Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All)))
-            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ([ int((x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() and abs(x[:, -13:][torch.where(x[i, 104:117] == 5)[0][0]] - x[:, -13:][torch.where(x[i, 104:117] == 6)[0][0]]) <= scalers["elapsed_time"].transform([[120]])[0][0]) if (x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() else False]))
+            Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -477,6 +506,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
             Forall(x_All_A, HighLacticAcid(x_All_A)),
             Forall(x_All_A, PresentCritCriteria(x_All_A)),
             Forall(x_All_A, And(CheckPresenceCRPAtb(x_All_A), CheckCRP100(x_All_A))),
@@ -547,6 +577,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
         ])
         formulas.extend([
             Forall(x_All, And(HasAct(x_All, ERSepsisTriage), And(HasAct(x_All, ERTriage), IsImmediateNext(x_All, ERTriage, ERSepsisTriage))), 
@@ -713,6 +744,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
             Forall(x_All_A, HighLacticAcid(x_All_A)),
             Forall(x_All_A, PresentCritCriteria(x_All_A)),
             Forall(x_All_A, And(CheckPresenceCRPAtb(x_All_A), CheckCRP100(x_All_A))),
