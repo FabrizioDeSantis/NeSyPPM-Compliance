@@ -29,7 +29,7 @@ def create_test_set(data, seed, ratio=0.2):
     filtered_values_r3_test = [x for x in filtered_values_r3 if x not in filtered_values_r3_training]
 
     filtered_values = filtered_values_r1_test + filtered_values_r2_test + filtered_values_r3_test + filtered_values_nor
-    filtered_values = list(set(filtered_values))  # Remove duplicates
+    filtered_values = list(set(filtered_values))
 
     # take len_test_set from filtered_values
     if len(filtered_values) > len_test_set:

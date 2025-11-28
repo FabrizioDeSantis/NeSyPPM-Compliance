@@ -91,6 +91,16 @@ rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1))
 rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
 
+ERSepsisTriage = ltn.Constant(torch.tensor(5))
+ERTriage = ltn.Constant(torch.tensor(4))
+Antibiotics = ltn.Constant(torch.tensor(6))
+Liquid = ltn.Constant(torch.tensor(7))
+
+WaitTimeLessThan2h = lambda x: torch.tensor([
+    int((x[:, 104:117] == 5).any() and 
+            (x[:, 104:117] == 6).any() and abs(x[:, -13:][torch.where(x[i, 104:117] == 5)[0][0]] - x[:, -13:][torch.where(x[i, 104:117] == 6)[0][0]]) <= scalers["elapsed_time"].transform([[120]])[0][0]
+        ) if (x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() else False])
+
 numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "elapsed_time", "time_since_previous"]
 
 if args.backbone == "lstm":
@@ -316,6 +326,7 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All)))
+            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn = lambda x: ([ int((x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() and abs(x[:, -13:][torch.where(x[i, 104:117] == 5)[0][0]] - x[:, -13:][torch.where(x[i, 104:117] == 6)[0][0]]) <= scalers["elapsed_time"].transform([[120]])[0][0]) if (x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() else False]))
         ])
         sat_agg = SatAgg(*formulas)
         loss = 1 - sat_agg
@@ -506,10 +517,7 @@ max_f1_val = 0.0
 if args.backbone == "lstm":
     lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
 else:
-    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)ERSepsisTriage = ltn.Constant(torch.tensor(5))
-ERTriage = ltn.Constant(torch.tensor(4))
-Antibiotics = ltn.Constant(torch.tensor(6))
-Liquid = ltn.Constant(torch.tensor(7))
+    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
 HasAct = ltn.Predicate(func = lambda x, act: torch.tensor(x[:, 104:117] == act[0].item()).any(dim=1))
 IsNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i < j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
 IsImmediateNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i + 1 == j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
