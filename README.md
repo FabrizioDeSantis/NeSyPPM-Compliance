@@ -35,7 +35,7 @@ The event logs used in the study can be downloaded from the following links:
 
 ---
 
-## Declarative constraints to First-Order Logic formulas
+## Translation of Declarative constraints into First-Order Logic formulas
 
 The file **`declare_to_fol_templates.pdf`** contains the translation of declarative constraints intoto first-order logic formulas. The resulting FOL formulas can be implemented in the LTN framework to express control-flow constraints in business processes.
 
