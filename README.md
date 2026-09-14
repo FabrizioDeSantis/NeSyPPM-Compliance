@@ -1,7 +1,7 @@
-# Two-Stage LTN w/ Rule Pruning
+# Compliance-Aware Predictive Process Monitoring: A Neuro-Symbolic Approach
 
 This repository contains the code for the paper:
-> **Neuro-Symbolic Learning for Predictive Process Monitoring via Two-Stage Logic Tensor Networks with Rule Pruning**
+> **Compliance-Aware Predictive Process Monitoring: A Neuro-Symbolic Approach**
 
 ---
 
