@@ -1,6 +1,7 @@
 # Two-Stage LTN w/ Rule Pruning
 
-This repository contains the code for the paper "Neuro-Symbolic Learning for Predictive Process Monitoring via Two-Stage Logic Tensor Networks with Rule Pruning"
+This repository contains the code for the paper:
+> **Neuro-Symbolic Learning for Predictive Process Monitoring via Two-Stage Logic Tensor Networks with Rule Pruning**
 
 ## Files
 
