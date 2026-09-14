@@ -39,7 +39,7 @@ The event logs used in the study can be downloaded from the following links:
 
 The file **`declare_to_fol_templates.pdf`** contains the translation of declarative constraints intoto first-order logic formulas. The resulting FOL formulas can be implemented in the LTN framework to express control-flow constraints in business processes.
 
-The file **`declare_to_fol.py`** implements the declarative constraints described in the previous PDF as predicates that can be used within the LTN framework.
+The file **`declare_ltn_templates.py`** implements the declarative constraints described in the previous PDF as predicates that can be used within the LTN framework. **(in progress)**
 
 ---
 
