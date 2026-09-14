@@ -7,10 +7,14 @@ This repository contains the code for the paper:
 
 ## Files
 
-*   **`main_bpi12.py`**: Contains the code to reproduce the experiments with the *BPIC2012* event log.
-*   **`main_bpi17.py`**: Contains the code to reproduce the experiments with the *BPIC2017* event log.
-*   **`main_sepsis.py`**: Contains the code to reproduce the experiments with the *SEPSIS* event log.
-*   **`main_traffic.py`**: Contains the code to reproduce the experiments with the *TRAFFIC FINES* dataset.
+*   **`main_bpi12.py`**: Contains the code to reproduce our approach with the *BPIC2012* event log.
+*   **`main_bpi17.py`**: Contains the code to reproduce our approach with the *BPIC2017* event log.
+*   **`main_sepsis.py`**: Contains the code to reproduce our approach with the *SEPSIS* event log.
+*   **`main_traffic.py`**: Contains the code to reproduce our approach with the *TRAFFIC FINES* dataset.
+*   **`main_bpi12_semantic_loss.py`**: Contains the code of the semantic loss approach for the *BPIC2012* event log.
+*   **`main_bpi17_semantic_loss.py`**: Contains the code of the semantic loss approach for the *BPIC2017* event log.
+*   **`main_sepsis_semantic_loss.py`**: Contains the code of the semantic loss approach for the *SEPSIS* event log.
+*   **`main_traffic_semantic_loss.py`**: Contains the code of the semantic loss approach for the *TRAFFIC FINES* dataset.
 *   **`main_feat_eng.py`**: Contains the code to reproduce the experiments with the LSTM-FE and TFR-FE models.
 *   **`data/preprocess_bpi12.py`**: Contains the code for preprocessing the *BPIC2012* event log.
 *   **`data/preprocess_bpi17.py`**: Contains the code for preprocessing the *BPIC2017* event log.
