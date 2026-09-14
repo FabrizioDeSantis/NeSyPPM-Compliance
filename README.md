@@ -25,12 +25,12 @@ This repository contains the code for the paper:
 
 ## Datasets
 
-The tested event logs can be downloaded from the following links:
+The event logs used in the study can be downloaded from the following links:
 
-* -- [BPIC2012](https://data.4tu.nl/articles/dataset/BPI_Challenge_2012/12689204)
-* -- [BPIC2017](https://data.4tu.nl/datasets/34c3f44b-3101-4ea9-8281-e38905c68b8d/1)
-* -- [Sepsis](https://data.4tu.nl/datasets/33632f3c-5c48-40cf-8d8f-2db57f5a6ce7/1)
-* -- [Traffic fines](https://data.4tu.nl/datasets/806acd1a-2bf2-4e39-be21-69b8cad10909/1)
+* [BPIC2012](https://data.4tu.nl/articles/dataset/BPI_Challenge_2012/12689204)
+* [BPIC2017](https://data.4tu.nl/datasets/34c3f44b-3101-4ea9-8281-e38905c68b8d/1)
+* [Sepsis](https://data.4tu.nl/datasets/33632f3c-5c48-40cf-8d8f-2db57f5a6ce7/1)
+* [Traffic fines](https://data.4tu.nl/datasets/806acd1a-2bf2-4e39-be21-69b8cad10909/1)
 
 ## Usage
 
