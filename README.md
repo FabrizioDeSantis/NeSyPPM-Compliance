@@ -3,6 +3,8 @@
 This repository contains the code for the paper:
 > **Neuro-Symbolic Learning for Predictive Process Monitoring via Two-Stage Logic Tensor Networks with Rule Pruning**
 
+---
+
 ## Files
 
 *   **`main_bpi12.py`**: Contains the code for the *BPIC2012* event log.
@@ -23,7 +25,12 @@ This repository contains the code for the paper:
 
 ## Datasets
 
-The tested event logs can be found at https://data.4tu.nl/search?datatypes=3
+The tested event logs can be downloaded from the following links:
+
+* -- [BPIC2012](https://data.4tu.nl/articles/dataset/BPI_Challenge_2012/12689204)
+* --
+* --
+* --
 
 ## Usage
 
