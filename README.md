@@ -23,6 +23,8 @@ This repository contains the code for the paper:
 *   **`knowledge_base.py`**: Dataset class.
 *   **`create_temporal_features.py`**: Contains the code to create the temporal features also used for logical rules.
 
+---
+
 ## Datasets
 
 The event logs used in the study can be downloaded from the following links:
@@ -32,7 +34,15 @@ The event logs used in the study can be downloaded from the following links:
 * [Sepsis](https://data.4tu.nl/datasets/33632f3c-5c48-40cf-8d8f-2db57f5a6ce7/1)
 * [Traffic fines](https://data.4tu.nl/datasets/806acd1a-2bf2-4e39-be21-69b8cad10909/1)
 
-## Usage
+---
+
+## Declarative constraints to First-Order Logic formulas
+
+The file **`declare_to_fol_templates.pdf`** contains the translation of declarative constraints intoto first-order logic formulas. The resulting FOL formulas can be implemented in the LTN framework to express control-flow constraints in business processes.
+
+---
+
+## Reproducibility
 
 Execute the script of interest with following flags:
 * --backbone: "lstm" or "transformer"
