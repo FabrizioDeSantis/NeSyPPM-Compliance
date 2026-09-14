@@ -7,21 +7,20 @@ This repository contains the code for the paper:
 
 ## Files
 
-*   **`main_bpi12.py`**: Contains the code for the *BPIC2012* event log.
-*   **`main_bpi17.py`**: Contains the code for the *BPIC2017* event log.
-*   **`main_sepsis.py`**: Contains the code for the *SEPSIS* event log.
-*   **`main_traffic.py`**: Contains the code for the *TRAFFIC FINES* dataset.
-*   **`main_feat_eng.py`**: Contains the code for the LSTM-FE and TFR-FE models.
+*   **`main_bpi12.py`**: Contains the code to reproduce the experiments with the *BPIC2012* event log.
+*   **`main_bpi17.py`**: Contains the code to reproduce the experiments with the *BPIC2017* event log.
+*   **`main_sepsis.py`**: Contains the code to reproduce the experiments with the *SEPSIS* event log.
+*   **`main_traffic.py`**: Contains the code to reproduce the experiments with the *TRAFFIC FINES* dataset.
+*   **`main_feat_eng.py`**: Contains the code to reproduce the experiments with the LSTM-FE and TFR-FE models.
 *   **`data/preprocess_bpi12.py`**: Contains the code for preprocessing the *BPIC2012* event log.
 *   **`data/preprocess_bpi17.py`**: Contains the code for preprocessing the *BPIC2017* event log.
 *   **`data/preprocess_sepsis.py`**: Contains the code for preprocessing the *Sepsis* event log.
 *   **`data/preprocess_traffic.py`**: Contains the code for preprocessing the *TRAFFIC FINES* event log.
 *   **`model/lstm.py`**: Contains the architecture used for the LSTM backbone.
-*   **`model/transformer.py`**: Contains the architecture used
-*   **`knowledge_base.py`**: Dataset class. for the Transformer backbone.
+*   **`model/transformer.py`**: Contains the architecture used for the Transformer backbone.
 *   **`data/dataset.py`**: Dataset class.
-*   **`knowledge_base.py`**: Dataset class.
 *   **`create_temporal_features.py`**: Contains the code to create the temporal features also used for logical rules.
+*   **`knowledge_base.txt`**: Contains the six rules used for each event log.
 
 ---
 
@@ -40,7 +39,7 @@ The event logs used in the study can be downloaded from the following links:
 
 The file **`declare_to_fol_templates.pdf`** contains the translation of declarative constraints intoto first-order logic formulas. The resulting FOL formulas can be implemented in the LTN framework to express control-flow constraints in business processes.
 
-The file **`declare_to_fol.py`** implements the declarative constraints and translate them into predicates that can be used within the LTN framework.
+The file **`declare_to_fol.py`** implements the declarative constraints described in the previous PDF as predicates that can be used within the LTN framework.
 
 ---
 
