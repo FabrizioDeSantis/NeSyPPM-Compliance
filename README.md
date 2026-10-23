@@ -1,4 +1,4 @@
-# NeSyPM-Compliance
+# Compliance-Aware Predictive Process Monitoring: A Neuro-Symbolic Approach
 
 Neuro-symbolic **outcome prediction** for business processes with **compliance knowledge**.
 
