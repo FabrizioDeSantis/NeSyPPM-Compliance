@@ -219,3 +219,25 @@ legacy/                    the previous per-dataset scripts, kept for reference 
   template names are listed in `declare/templates.py`.
 - **A new dataset:** write `data/preprocess_<name>.py` with the same `preprocess_eventlog` interface, register it
   in `DATASETS` (`nesy/datasets.py`), and add its rules to `RULES` (`nesy/knowledge.py`).
+
+## Citation
+
+If you use this code, please cite:
+
+> F. De Santis, G. Park, F. Zanichelli. Neuro-symbolic artificial intelligence for real-time sepsis mortality
+> prediction. *Engineering Applications of Artificial Intelligence*, 177, 114920.
+
+```bibtex
+@InProceedings{10.1007/978-3-032-28117-3_13,
+author="De Santis, Fabrizio
+and Park, Gyunam
+and van der Aalst, Wil M. P.
+and Zanichelli, Francesco",
+title="Compliance-Aware Predictive Process Monitoring: A Neuro-Symbolic Approach",
+booktitle="Advanced Information Systems Engineering",
+year="2026",
+publisher="Springer Nature Switzerland",
+address="Cham",
+pages="223--239",
+}
+```
