@@ -3,8 +3,8 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import random
 
-def create_test_set(data, seed, ratio=0.2):
-    random.seed(seed)
+def create_test_set(data, ratio=0.2):
+    random.seed(42)
     grouped = data.groupby("case:concept:name")
     unique_groups = list(grouped.groups.keys())
     labels = data.groupby("case:concept:name")["label"].first().to_list()
@@ -40,6 +40,82 @@ def create_test_set(data, seed, ratio=0.2):
     print("Number of compliant traces in test set: ", len(compliant_test_ids))
 
     return training_ids, test_ids
+
+def create_test_set_2(data, ratio=0.2, noise_ratio=0.4):
+    """
+    Creates a test set with a specified ratio of noise (non-compliant examples).
+    
+    Args:
+        data: DataFrame with case data
+        ratio: Proportion of total data to use for test set
+        noise_ratio: Proportion of test set that should be non-compliant noise
+    """
+    random.seed(11)
+    grouped = data.groupby("case:concept:name")
+    unique_groups = list(grouped.groups.keys())
+    labels = data.groupby("case:concept:name")["label"].first().to_list()
+
+    len_test_set = int(len(unique_groups) * ratio)
+
+    labels_r1 = data.groupby("case:concept:name")["rule_1"].first().to_list()
+    labels_r2 = data.groupby("case:concept:name")["rule_2"].first().to_list()
+    labels_r3 = data.groupby("case:concept:name")["rule_3"].first().to_list()
+
+    # Compliant examples (compliant rules with correct label=0)
+    filtered_values_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l == 0)]
+    filtered_values_r2 = [v for v, l, r in zip(unique_groups, labels, labels_r2) if (r == 1 and l == 0)]
+    filtered_values_r3 = [v for v, l, r in zip(unique_groups, labels, labels_r3) if (r == 1 and l == 0)]
+    # Examples that do not satisfy any rule and have label = 1
+    filtered_values_nor = [v for v, l, r1, r2, r3 in zip(unique_groups, labels, labels_r1, labels_r2, labels_r3) if (r1 == 0 and r2 == 0 and r3 == 0 and l == 1)]
+
+    compliant_ids = list(set(filtered_values_r1 + filtered_values_r2 + filtered_values_r3 + filtered_values_nor))
+
+    # Non-compliant noise examples (rules satisfied but wrong label)
+    noise_examples_r1 = [v for v, l, r in zip(unique_groups, labels, labels_r1) if (r == 1 and l == 1)]
+    noise_examples_r2 = [v for v, l, r in zip(unique_groups, labels, labels_r2) if (r == 1 and l == 1)]
+    noise_examples_r3 = [v for v, l, r in zip(unique_groups, labels, labels_r3) if (r == 1 and l == 1)]
+    all_noise_examples = list(set(noise_examples_r1 + noise_examples_r2 + noise_examples_r3))
+
+    # Calculate number of noise examples needed
+    num_noise = int(len_test_set * noise_ratio)
+    num_compliant = len_test_set - num_noise
+
+    # Sample noise examples
+    if len(all_noise_examples) >= num_noise:
+        noise_ids = random.sample(all_noise_examples, num_noise)
+    else:
+        noise_ids = all_noise_examples
+        num_noise = len(noise_ids)
+        num_compliant = len_test_set - num_noise
+
+    # Sample compliant examples
+    if len(compliant_ids) >= num_compliant:
+        compliant_test_ids = random.sample(compliant_ids, num_compliant)
+    else:
+        compliant_test_ids = compliant_ids
+
+    # Combine for test set
+    test_ids = compliant_test_ids + noise_ids
+    training_ids = [x for x in unique_groups if x not in test_ids]
+    training_ids = list(set(training_ids))
+
+    print(f"Test set - Compliant: {len(compliant_test_ids)}, Non-compliant noise: {len(noise_ids)}, Total: {len(test_ids)}")
+    print(f"Training set size: {len(training_ids)}")
+
+    return training_ids, test_ids
+
+def create_train_val_test_split(data, train_ratio=0.8, val_ratio=0.1, test_ratio=0.2):
+    data = data.sort_values(by=['case:concept:name', 'time:timestamp'])
+    graph_ids = data['case:concept:name'].unique()
+    num_graphs = len(graph_ids)
+    test_size = int(num_graphs * test_ratio)
+    val_size = int((num_graphs - test_size) * val_ratio)
+    train_size = num_graphs - test_size - val_size
+    print(f"Total graphs: {num_graphs}, Train: {train_size}, Val: {val_size}, Test: {test_size}")
+    train_ids = graph_ids[:train_size]
+    val_ids = graph_ids[train_size:train_size + val_size]
+    test_ids = graph_ids[train_size + val_size:]
+    return train_ids, test_ids
 
 def create_ngrams(data, train_ids, val_ids, test_ids, window_size=40):
 
@@ -116,7 +192,7 @@ def create_ngrams(data, train_ids, val_ids, test_ids, window_size=40):
 
     return ngrams_training, labels_training, ngrams_val, labels_val, ngrams_test, labels_test, feature_names
 
-def preprocess_eventlog(data, seed, dataset_size=None):
+def preprocess_eventlog(data, dataset_size=None):
 
     vocab_sizes = {}
     cases = data[data["concept:name"] == "A_SUBMITTED-COMPLETE"]
@@ -124,17 +200,16 @@ def preprocess_eventlog(data, seed, dataset_size=None):
     case_ids = cases["case:concept:name"].to_list()
     print("Number of traces: ", len(labels))
 
-    train_ids, test_ids = create_test_set(data, seed)
+    train_ids, test_ids = create_test_set(data)
     data_training = data[data["case:concept:name"].isin(train_ids)]
-    train_ids, val_ids = create_test_set(data_training, seed, ratio=0.2)
+    train_ids, val_ids = create_test_set(data_training, ratio=0.2)
+    # train_ids, test_ids = create_train_val_test_split(data)
 
     print("Number of traces in train set: ", len(train_ids))
     print("Number of traces in val set: ", len(val_ids))
     print("Number of traces in test set: ", len(test_ids))
 
     scaler_ar = MinMaxScaler()
-    scaler_elapsed = MinMaxScaler()
-    scaler_time_prev = MinMaxScaler()
     
     labels = data.groupby("case:concept:name")["label"].first().reset_index()
     print(data.columns)
@@ -163,15 +238,9 @@ def preprocess_eventlog(data, seed, dataset_size=None):
     # Numerical values
     data["case:AMOUNT_REQ"] = data["case:AMOUNT_REQ"].ffill()
     data["case:AMOUNT_REQ"] = scaler_ar.fit_transform(data[["case:AMOUNT_REQ"]])
-    data["elapsed_time"] = data["elapsed_time"].fillna(0)
-    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
-    data["time_since_previous"] = data["time_since_previous"].fillna(0)
-    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
 
     scalers = {
-        "case:AMOUNT_REQ": scaler_ar,
-        "elapsed_time": scaler_elapsed,
-        "time_since_previous": scaler_time_prev
+        "case:AMOUNT_REQ": scaler_ar
     }
 
     return create_ngrams(data, train_ids, val_ids, test_ids), vocab_sizes, scalers

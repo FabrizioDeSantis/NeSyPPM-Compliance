@@ -11,7 +11,6 @@ from metrics import compute_metrics, compute_metrics_fa
 from collections import Counter
 from data import preprocess_sepsis
 from data.dataset import NeSyDataset, ModelConfig
-from model.transformer import EventTransformer, EventTransformerA
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -40,10 +39,9 @@ def get_args():
     parser.add_argument("--dropout_rate", type=float, default=0.1, help="Dropout rate for the LSTM model")
     parser.add_argument("--num_epochs", type=int, default=15, help="Number of epochs for training")
     parser.add_argument("--num_epochs_nesy", type=int, default=15, help="Number of epochs for training LTN model")
+    parser.add_argument("--dataset", type=str, default="sepsis", help="Dataset to use")
     parser.add_argument("--train_vanilla", type=bool, default=True, help="Train vanilla LSTM model")
     parser.add_argument("--train_nesy", type=bool, default=True, help="Train LTN model")
-    parser.add_argument("--backbone", type=str, default="lstm", help="Model backbone: lstm or transformer")
-    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
 
     return parser.parse_args()
 
@@ -64,9 +62,9 @@ config = ModelConfig(
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
 print("-- Reading dataset")
-data = pd.read_csv("data_processed/sepsis_2.csv", dtype={"org:resource": str})
+data = pd.read_csv("data_processed/sepsis_3.csv", dtype={"org:resource": str})
 
-(X_train, y_train, X_val, y_val, X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_sepsis.preprocess_eventlog(data, args.seed)
+(X_train, y_train, X_val, y_val,  X_test, y_test, feature_names), vocab_sizes, scalers = preprocess_sepsis.preprocess_eventlog(data)
 
 print("--- Label distribution")
 print("--- Training set")
@@ -79,11 +77,11 @@ print(counts)
 print(feature_names)
 
 train_dataset = NeSyDataset(X_train, y_train)
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 val_dataset = NeSyDataset(X_val, y_val)
-val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False)
 test_dataset = NeSyDataset(X_test, y_test)
-test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False)
+test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
 ### SEPSIS RULES
 high_lactic_acid = lambda x: (x[..., 351:364] > scalers["LacticAcid"].transform([[2]])[0][0]).any(dim=1)
@@ -91,51 +89,9 @@ rule_2 = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1))
 rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x]).to(device)
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
 
-def check_time_constraint(x):
-    batch_results = []
-    for i in range(x.value.shape[0]):
-        row = x.value[i]
-        # Find positions where activity 5 and 6 occur
-        act5_positions = (row[104:117] == 5).nonzero(as_tuple=True)[0]
-        act6_positions = (row[104:117] == 6).nonzero(as_tuple=True)[0]
-                
-        # Check if both activities exist
-        if len(act5_positions) > 0 and len(act6_positions) > 0:
-            # Get elapsed times for these positions
-            times_act5 = row[-13:][act5_positions]
-            times_act6 = row[-13:][act6_positions]
-                    
-            # Check if any pair has time difference <= 120
-            satisfies = False
-            for t5 in times_act5:
-                for t6 in times_act6:
-                    if abs(t5 - t6) <= scalers["elapsed_time"].transform([[120]])[0][0]:
-                        satisfies = True
-                        break
-                if satisfies:
-                    break
-            batch_results.append(satisfies)
-        else:
-            batch_results.append(False)
-            
-    return torch.tensor(batch_results, dtype=torch.bool, device=x.value.device)
+numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "time_since_previous", "elapsed_time"]
 
-ERSepsisTriage = ltn.Constant(torch.tensor(5))
-ERTriage = ltn.Constant(torch.tensor(4))
-Antibiotics = ltn.Constant(torch.tensor(6))
-Liquid = ltn.Constant(torch.tensor(7))
-
-WaitTimeLessThan2h = lambda x: torch.tensor([
-    int((x[:, 104:117] == 5).any() and 
-            (x[:, 104:117] == 6).any() and abs(x[:, -13:][torch.where(x[i, 104:117] == 5)[0][0]] - x[:, -13:][torch.where(x[i, 104:117] == 6)[0][0]]) <= scalers["elapsed_time"].transform([[120]])[0][0]
-        ) if (x[:, 104:117] == 5).any() and (x[:, 104:117] == 6).any() else False])
-
-numerical_features = ['InfectionSuspected', 'DiagnosticBlood', 'DisfuncOrg', 'SIRSCritTachypnea', 'Hypotensie', 'SIRSCritHeartRate', 'Infusion', 'DiagnosticArtAstrup', 'Age', 'DiagnosticIC', 'DiagnosticSputum', 'DiagnosticLiquor', 'DiagnosticOther', 'SIRSCriteria2OrMore', 'DiagnosticXthorax', 'SIRSCritTemperature', 'DiagnosticUrinaryCulture', 'SIRSCritLeucos', 'Oligurie', 'DiagnosticLacticAcid', 'Hypoxie', 'DiagnosticUrinarySediment', 'DiagnosticECG', 'Leucocytes', 'CRP', 'LacticAcid', "elapsed_time", "time_since_previous"]
-
-if args.backbone == "lstm":
-    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
+lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features).to(device)
 optimizer = torch.optim.Adam(lstm.parameters(), lr=config.learning_rate)
 criterion = torch.nn.BCELoss()
 
@@ -225,10 +181,7 @@ plt.title("Confusion Matrix")
 plt.savefig("confusion_matrix_lstm.png", dpi=300, bbox_inches='tight')
 plt.close()
 
-if args.backbone == "lstm":
-    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
+lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
 P = ltn.Predicate(lstm).to(device)
 
 # Knowledge Theory
@@ -263,12 +216,10 @@ def compute_satisfaction_level(loader):
     mean_sat /= len(loader)
     return mean_sat
 
-max_f1_val = 0.0
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
-        x = x.to(device)
         x_P = ltn.Variable("x_P", x[y==1])
         x_not_P = ltn.Variable("x_not_P", x[y==0])
         formulas = []
@@ -287,17 +238,9 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics_fa(val_loader, lstm, device, "ltn", scalers, dataset)
-        print(f1)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f "
                 %(epoch, train_loss))
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
+
 lstm.eval()
 print("Metrics LTN w/o knowledge")
 accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn", scalers, dataset)
@@ -326,14 +269,12 @@ CheckPresenceCRPAtb = ltn.Predicate(func= lambda x: torch.tensor([int(any(i < j 
 CheckCRP100 = ltn.Predicate(func = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1))
 
 # LTN_B
-if args.backbone == "lstm":
-    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
+
+lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
 P = ltn.Predicate(lstm).to(device)
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
-max_f1_val = 0.0
+
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
@@ -350,6 +291,35 @@ for epoch in range(args.num_epochs_nesy):
             formulas.extend([
                 Forall(x_not_P, Not(P(x_not_P)))
             ])
+        def check_time_constraint(x):
+            batch_results = []
+            for i in range(x.value.shape[0]):
+                row = x.value[i]
+                # Find positions where activity 5 and 6 occur
+                act5_positions = (row[104:117] == 5).nonzero(as_tuple=True)[0]
+                act6_positions = (row[104:117] == 6).nonzero(as_tuple=True)[0]
+                
+                # Check if both activities exist
+                if len(act5_positions) > 0 and len(act6_positions) > 0:
+                    # Get elapsed times for these positions
+                    times_act5 = row[-13:][act5_positions]
+                    times_act6 = row[-13:][act6_positions]
+                    
+                    # Check if any pair has time difference <= 120
+                    satisfies = False
+                    for t5 in times_act5:
+                        for t6 in times_act6:
+                            if abs(t5 - t6) <= scalers["elapsed_time"].transform([[120]])[0][0]:
+                                satisfies = True
+                                break
+                        if satisfies:
+                            break
+                    batch_results.append(satisfies)
+                else:
+                    batch_results.append(False)
+            
+            return torch.tensor(batch_results, dtype=torch.bool, device=x.value.device)
+        
         formulas.extend([
             # SEPSIS KG
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
@@ -365,17 +335,9 @@ for epoch in range(args.num_epochs_nesy):
         del x_P, x_not_P, sat_agg
     
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics(val_loader, lstm, device, "ltn", scalers, dataset)
-        print(f1)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f"
                 %(epoch, train_loss))
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
+
 lstm.eval()
 print("Metrics LTN w knowledge (B)")
 accuracy, f1score, precision, recall, compliance = compute_metrics(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
@@ -395,12 +357,9 @@ high_lactic_acid = lambda x: (x[:, 351:364] > scalers["LacticAcid"].transform([[
 check_sirs_criteria = lambda x: (x[:, :13].eq(1).any(dim=1)) & (x[:, 39:52].eq(1).any(dim=1)) & (x[:, 65:78].eq(1).any(dim=1))
 rule_crp_atb = lambda x: torch.tensor([int(any(i < j for i in (row[104:117] == 2).nonzero(as_tuple=True)[0] for j in (row[104:117] == 6).nonzero(as_tuple=True)[0])) for row in x])
 rule_crp_100 = lambda x: (x[:, 338:351] > scalers["CRP"].transform([[100]])[0][0]).any(dim=1)
-if args.backbone == "lstm":
-    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
+lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
 P = ltn.Predicate(lstm).to(device)
-max_f1_val = 0.0
+
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
@@ -441,17 +400,9 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics_fa(val_loader, lstm, device, "ltn", scalers, dataset)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f"
                 %(epoch, train_loss))
 
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
 lstm.eval()
 print("Metrics LTN w knowledge (A)")
 accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
@@ -468,15 +419,13 @@ metrics_ltn_A.append(compliance)
 
 # LTN_AB
 
-if args.backbone == "lstm":
-    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)P = ltn.Predicate(lstm).to(device)
+lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
+P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
-max_f1_val = 0.0
+
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
@@ -506,7 +455,6 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
-            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
             Forall(x_All_A, HighLacticAcid(x_All_A)),
             Forall(x_All_A, PresentCritCriteria(x_All_A)),
             Forall(x_All_A, And(CheckPresenceCRPAtb(x_All_A), CheckCRP100(x_All_A))),
@@ -518,13 +466,6 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics_fa(val_loader, lstm, device, "ltn", scalers, dataset)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f "
                 %(epoch, train_loss))
 
@@ -543,11 +484,12 @@ print("Compliance:", compliance)
 metrics_ltn_AB.append(compliance)
 
 # LTN_BC
-max_f1_val = 0.0
-if args.backbone == "lstm":
-    lstm = LSTMModel(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformer(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)
+
+lstm = LSTMModel(vocab_sizes, config, 1, feature_names, numerical_features)
+ERSepsisTriage = ltn.Constant(torch.tensor(5))
+ERTriage = ltn.Constant(torch.tensor(4))
+Antibiotics = ltn.Constant(torch.tensor(6))
+Liquid = ltn.Constant(torch.tensor(7))
 HasAct = ltn.Predicate(func = lambda x, act: torch.tensor(x[:, 104:117] == act[0].item()).any(dim=1))
 IsNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i < j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
 IsImmediateNext = ltn.Predicate(func = lambda x, act1, act2: torch.tensor([int(any(i + 1 == j for i in (row[104:117] == act1[0].item()).nonzero(as_tuple=True)[0] for j in (row[104:117] == act2[0].item()).nonzero(as_tuple=True)[0])) for row in x]).to(device))
@@ -557,6 +499,7 @@ params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
 
 for epoch in range(args.num_epochs_nesy):
+# for epoch in range(1):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
         optimizer.zero_grad()
@@ -577,7 +520,6 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
-            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
         ])
         formulas.extend([
             Forall(x_All, And(HasAct(x_All, ERSepsisTriage), And(HasAct(x_All, ERTriage), IsImmediateNext(x_All, ERTriage, ERSepsisTriage))), 
@@ -597,16 +539,9 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics(val_loader, lstm, device, "ltn", scalers, dataset)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f"
                 %(epoch, train_loss))
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
+
 lstm.eval()
 print("Metrics LTN w knowledge and parallel constraints")
 accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
@@ -623,15 +558,13 @@ metrics_ltn_BC.append(compliance)
 
 # LTN_AC
 
-if args.backbone == "lstm":
-    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length)P = ltn.Predicate(lstm).to(device)
+lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
+P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
-max_f1_val = 0.0
+
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
@@ -679,16 +612,9 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics_fa(val_loader, lstm, device, "ltn", scalers, dataset)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f"
                 %(epoch, train_loss))
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
+
 lstm.eval()
 print("Metrics LTN w knowledge (AC)")
 accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)
@@ -705,16 +631,13 @@ metrics_ltn_AC.append(compliance)
 
 # LTN_ABC
 
-if args.backbone == "lstm":
-    lstm = LSTMModelA(vocab_sizes, config, feature_names, numerical_features, num_classes=1).to(device)
-else:
-    lstm = EventTransformerA(vocab_sizes, config, feature_names, numerical_features, model_dim=args.hidden_size, num_classes=1, max_len=max_prefix_length).to(device)
+lstm = LSTMModelA(vocab_sizes, config, 1, feature_names, numerical_features)
 P = ltn.Predicate(lstm).to(device)
 
 SatAgg = ltn.fuzzy_ops.SatAgg()
 params = list(P.parameters())
 optimizer = torch.optim.Adam(params, lr=config.learning_rate)
-max_f1_val = 0.0
+
 for epoch in range(args.num_epochs_nesy):
     train_loss = 0.0
     for enum, (x, y) in enumerate(train_loader):
@@ -744,7 +667,6 @@ for epoch in range(args.num_epochs_nesy):
             Forall(x_All, P(x_All), cond_vars=[x_All], cond_fn = lambda x: (x.value[:, :13].eq(1).any(dim=1)) & (x.value[:, 39:52].eq(1).any(dim=1)) & (x.value[:, 65:78].eq(1).any(dim=1))),
             Forall(x_All, Implies(PresentCritCriteria(x_All), P(x_All))),
             Forall(x_All, Implies(And(CheckPresenceCRPAtb(x_All), CheckCRP100(x_All)), P(x_All))),
-            Forall(x_All, Not(P(x_All)), cond_vars=[x_All], cond_fn=check_time_constraint),
             Forall(x_All_A, HighLacticAcid(x_All_A)),
             Forall(x_All_A, PresentCritCriteria(x_All_A)),
             Forall(x_All_A, And(CheckPresenceCRPAtb(x_All_A), CheckCRP100(x_All_A))),
@@ -767,16 +689,9 @@ for epoch in range(args.num_epochs_nesy):
         train_loss += loss.item()
         del x_P, x_not_P, sat_agg
     train_loss = train_loss / len(train_loader)
-    with torch.no_grad():
-        lstm.eval()
-        _, f1, _, _, _ = compute_metrics_fa(val_loader, lstm, device, "ltn", scalers, dataset)
-        if f1 > max_f1_val:
-            max_f1_val = f1
-            torch.save(lstm.state_dict(), "best_model_lstm.pth")
-    lstm.train()
     print(" epoch %d | loss %.4f"
                 %(epoch, train_loss))
-lstm.load_state_dict(torch.load("best_model_lstm.pth"))
+
 lstm.eval()
 print("Metrics LTN w knowledge")
 accuracy, f1score, precision, recall, compliance = compute_metrics_fa(test_loader, lstm, device, "ltn_w_k", scalers, dataset)

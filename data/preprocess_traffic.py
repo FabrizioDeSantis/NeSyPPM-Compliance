@@ -3,8 +3,8 @@ from sklearn.model_selection import train_test_split
 import pandas as pd
 import random
 
-def create_test_set(data, seed, ratio=0.2):
-    random.seed(seed)
+def create_test_set(data, ratio=0.2):
+    random.seed(11)
     grouped = data.groupby("case:concept:name")
     unique_groups = list(grouped.groups.keys())  # Get the unique group IDs
     labels = data.groupby("case:concept:name")["label"].first().to_list()
@@ -29,7 +29,7 @@ def create_test_set(data, seed, ratio=0.2):
     filtered_values_r3_test = [x for x in filtered_values_r3 if x not in filtered_values_r3_training]
 
     filtered_values = filtered_values_r1_test + filtered_values_r2_test + filtered_values_r3_test + filtered_values_nor
-    filtered_values = list(set(filtered_values))
+    filtered_values = sorted(set(filtered_values))  # Remove duplicates; sorted: set order of strings changes between runs
 
     # take len_test_set from filtered_values
     if len(filtered_values) > len_test_set:
@@ -38,6 +38,7 @@ def create_test_set(data, seed, ratio=0.2):
         test_ids = filtered_values
 
     training_ids = [x for x in unique_groups if x not in test_ids]
+    #training_ids = training_ids + filtered_values_r1_training + filtered_values_r2_training + filtered_values_r3_training
     training_ids = list(set(training_ids))
 
     compliant_test_ids = [x for x in test_ids if x in compliant_ids]
@@ -59,6 +60,7 @@ def create_ngrams(data, train_ids, val_ids, test_ids, window_size=10):
     training_data = data[data["case:concept:name"].isin(train_ids)]
     val_data = data[data["case:concept:name"].isin(val_ids)]
     test_data = data[data["case:concept:name"].isin(test_ids)]
+    # Create n-grams for training data
 
     for id_value, group in training_data.groupby('case:concept:name'):
 
@@ -132,7 +134,25 @@ def create_ngrams(data, train_ids, val_ids, test_ids, window_size=10):
 
     return ngrams_training, labels_training, ngrams_val, labels_val, ngrams_test, labels_test, feature_names
 
-def preprocess_eventlog(data, seed):
+def create_train_val_test_split(data, train_ratio=0.8, val_ratio=0.1, test_ratio=0.2):
+    # reorder data according to column 'case:concept:name' and time:timestamp from earliest to latest
+    data = data.sort_values(by=['case:concept:name', 'time:timestamp'])
+    # Get unique graph IDs
+    graph_ids = data['case:concept:name'].unique()
+    num_graphs = len(graph_ids)
+    # take 20% of the graphs as test set
+    test_size = int(num_graphs * test_ratio)
+    # take 10% of the remaining graphs as validation set
+    val_size = int((num_graphs - test_size) * val_ratio)
+    # take remaining as training set
+    train_size = num_graphs - test_size - val_size
+    print(f"Total graphs: {num_graphs}, Train: {train_size}, Val: {val_size}, Test: {test_size}")
+    train_ids = graph_ids[:train_size]
+    val_ids = graph_ids[train_size:train_size + val_size]
+    test_ids = graph_ids[train_size + val_size:]
+    return train_ids, test_ids
+
+def preprocess_eventlog(data, dataset_size=None):
 
     data = data.dropna(subset=["case:concept:name"])
     vocab_sizes = {}
@@ -147,14 +167,15 @@ def preprocess_eventlog(data, seed):
     scaler_paymentamount = MinMaxScaler()
     scaler_totalpaymentamount = MinMaxScaler()
     scaler_expense = MinMaxScaler()
-    scaler_elapsed = MinMaxScaler()
-    scaler_time_prev = MinMaxScaler()
 
     print(data.columns)
 
-    train_ids, test_ids = create_test_set(data, seed)
+    train_ids, test_ids = create_test_set(data)
     data_train = data[data["case:concept:name"].isin(train_ids)]
-    train_ids, val_ids = create_test_set(data_train, seed)
+    train_ids, val_ids = create_test_set(data_train)
+
+    with open("traffic_test_ids.txt", "w") as f:
+        f.write(str(test_ids))
 
     print("Number of traces in train set: ", len(train_ids))
     print("Number of traces in test set: ", len(test_ids))
@@ -194,7 +215,7 @@ def preprocess_eventlog(data, seed):
     vocab_sizes["lastSent"] = data["lastSent"].max()
 
     data["paymentAmount"] = data["paymentAmount"].fillna(0)
-    scaler_paymentamount = scaler_paymentamount.fit_transform(data[["paymentAmount"]])
+    data["paymentAmount"] = scaler_paymentamount.fit_transform(data[["paymentAmount"]])
     scalers["paymentAmount"] = scaler_paymentamount
 
     data["points"] = data["points"].fillna(-1)
@@ -220,14 +241,6 @@ def preprocess_eventlog(data, seed):
     data["expense"] = data["expense"].fillna(0)
     data["expense"] = scaler_expense.fit_transform(data[["expense"]])
     scalers["expense"] = scaler_expense
-
-    data["elapsed_time"] = data["elapsed_time"].fillna(0)
-    data["elapsed_time"] = scaler_elapsed.fit_transform(data[["elapsed_time"]])
-    scalers["elapsed_time"] = scaler_elapsed
-
-    data["time_since_previous"] = data["time_since_previous"].fillna(0)
-    data["time_since_previous"] = scaler_time_prev.fit_transform(data[["time_since_previous"]])
-    scalers["time_since_previous"] = scaler_time_prev
 
     data["article"] = data["article"].ffill()
     data["article"] = pd.Categorical(data["article"])

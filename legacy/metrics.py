@@ -441,7 +441,7 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
         rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
         rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
     # TRAFFIC RULES
-    if dataset == "traffic_fines":
+    if dataset == "traffic":
         rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
         rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
         rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
@@ -485,7 +485,7 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
             data = torch.cat([data, rule_amount_1_res.unsqueeze(1).repeat(1, 40)], dim=1)
             data = torch.cat([data, rule_2_res.unsqueeze(1).repeat(1, 40)], dim=1)
             data = torch.cat([data, rule_3_res.unsqueeze(1).repeat(1, 40)], dim=1)
-        elif dataset == "traffic_fines":
+        elif dataset == "traffic":
             rule_penalty_res = rule_penalty(data).detach()
             rule_payment_res = rule_payment(data).detach()
             rule_amount_res = rule_amount(data).detach()
@@ -523,7 +523,7 @@ def compute_metrics_fa(loader, model, device, mode, scalers, dataset):
                     num_constraints += 1
                     if predictions[i] == 1:
                         satisfied_constraints += 1
-            elif dataset == "traffic_fines":
+            elif dataset == "traffic":
                 if rule_penalty_res[i] == 1 and labels[i] == 1:
                     num_constraints += 1
                     if predictions[i] == 1:
@@ -572,7 +572,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
         rule_resource_1 = lambda x: (x[:, :240] == 48).any(dim=1)
         rule_resource_2 = lambda x: (x[:, :240] == 21).any(dim=1)
     # TRAFFIC RULES
-    if dataset == "traffic_fines":
+    if dataset == "traffic":
         rule_penalty = lambda x: (x[:, :10] == 1).any(dim=1)
         rule_payment = lambda x: (x[:, :10] == 7).any(dim=1) & (x[:, 100:110].max(dim=1).values < x[:, 90])
         rule_amount = lambda x: (x[:, 90] > scalers["amount"].transform([[400]])[0][0])
@@ -602,7 +602,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
             rule_amount_3_res = rule_amount_3(data).detach().cpu().numpy()
             rule_resource_1_res = rule_resource_1(data).detach().cpu().numpy()
             rule_resource_2_res = rule_resource_2(data).detach().cpu().numpy()
-        elif dataset == "traffic_fines":
+        elif dataset == "traffic":
             rule_penalty_res = rule_penalty(data).detach().cpu().numpy()
             rule_payment_res = rule_payment(data).detach().cpu().numpy()
             rule_amount_res = rule_amount(data).detach().cpu().numpy()
@@ -643,7 +643,7 @@ def compute_metrics(loader, model, device, mode, scalers, dataset):
                     num_constraints += 1
                     if predictions[i] == 1:
                         satisfied_constraints += 1
-            elif dataset == "traffic_fines":
+            elif dataset == "traffic":
                 if rule_penalty_res[i] == 1 and labels[i] == 1:
                     num_constraints += 1
                     if predictions[i] == 1:

@@ -23,7 +23,7 @@ def create_test_set(data, ratio=0.2):
 
     filtered_values = filtered_values_r1 + filtered_values_r2 + filtered_values_r3 + filtered_values_nor
     compliant_ids = list(set(filtered_values_r1 + filtered_values_r2 + filtered_values_r3))
-    filtered_values = list(set(filtered_values))
+    filtered_values = sorted(set(filtered_values))  # sorted: set order of strings changes between runs
 
     if len(filtered_values) > len_test_set:
         test_ids = random.sample(filtered_values, len_test_set)
