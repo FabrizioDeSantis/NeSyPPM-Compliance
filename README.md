@@ -224,9 +224,6 @@ legacy/                    the previous per-dataset scripts, kept for reference 
 
 If you use this code, please cite:
 
-> F. De Santis, G. Park, F. Zanichelli. Neuro-symbolic artificial intelligence for real-time sepsis mortality
-> prediction. *Engineering Applications of Artificial Intelligence*, 177, 114920.
-
 ```bibtex
 @InProceedings{10.1007/978-3-032-28117-3_13,
 author="De Santis, Fabrizio
